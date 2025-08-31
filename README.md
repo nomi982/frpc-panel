@@ -7,6 +7,9 @@ GitHub: https://github.com/nomi982/frpc-panel
 ## Docker 启动方式
 
 ```bash
+#先克隆源码
+git clone https://github.com/nomi982/frpc-panel.git
+
 # 使用 Docker Compose 一键启动
 docker-compose up -d
 
