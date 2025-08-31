@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  frpc-web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./frpc.toml:/app/frpc.toml
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
+    depends_on:
+      - frpc
+
+  frpc:
+    image: snowdreamtech/frpc
+    volumes:
+      - ./frpc.toml:/etc/frp/frpc.toml
+    restart: unless-stopped
+    network_mode: host
+    command: ["-c", "/etc/frp/frpc.toml"]

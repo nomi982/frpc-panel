@@ -1,0 +1,10 @@
+[common]
+server_addr = "your_frps_server_ip"
+server_port = 7000
+token = "your_token"
+
+[ssh]
+type = "tcp"
+local_ip = "127.0.0.1"
+local_port = 22
+remote_port = 10022
