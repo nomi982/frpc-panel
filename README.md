@@ -2,7 +2,7 @@
 
 一个基于 Flask 的 Web 应用程序，用于管理和编辑 FRP 客户端的 TOML 配置文件。
 
-GitHub: https://github.com/nomi982/frpc-panel.git
+GitHub: https://github.com/nomi982/frpc-panel
 
 ## Docker 启动方式
 
