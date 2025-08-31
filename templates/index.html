@@ -1,0 +1,590 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRPC 配置管理器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button.save {
+            background-color: #27ae60;
+        }
+        button.save:hover {
+            background-color: #219653;
+        }
+        button.danger {
+            background-color: #e74c3c;
+        }
+        button.danger:hover {
+            background-color: #c0392b;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        .form-group input.error {
+            border-color: #e74c3c;
+        }
+        .error-message {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .projects-container {
+            margin-top: 20px;
+        }
+        .project-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: white;
+        }
+        .project-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .project-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .project-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .project-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .add-project-form {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px dashed #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FRPC 配置管理器</h1>
+            <div class="controls">
+                <button id="saveBtn" class="save">保存配置</button>
+                <button id="reloadBtn">重新加载</button>
+            </div>
+        </header>
+        
+        <div id="status" class="status"></div>
+        
+        <!-- 全局设置部分 -->
+        <div class="section">
+            <h2>全局设置 (common)</h2>
+            <div class="form-group">
+                <label for="server_addr">服务器地址 (server_addr)</label>
+                <input type="text" id="server_addr" placeholder="例如: 192.168.1.100" required>
+                <div class="error-message" id="server_addr_error"></div>
+            </div>
+            <div class="form-group">
+                <label for="server_port">服务器端口 (server_port)</label>
+                <input type="number" id="server_port" min="1" max="65535" value="7000" required>
+            </div>
+            <div class="form-group">
+                <label for="token">身份验证令牌 (token)</label>
+                <input type="text" id="token" placeholder="输入身份验证令牌" required>
+            </div>
+        </div>
+        
+        <!-- 项目设置部分 -->
+        <div class="section">
+            <h2>项目设置</h2>
+            
+            <div class="bulk-actions">
+                <button id="addProjectBtn">新增项目</button>
+                <button id="batchDeleteBtn" class="danger">批量删除</button>
+            </div>
+            
+            <div id="projectsContainer" class="projects-container">
+                <!-- 项目卡片将通过JavaScript动态生成 -->
+            </div>
+            
+            <!-- 新增项目表单 -->
+            <div id="addProjectForm" class="add-project-form" style="display: none;">
+                <h3>新增项目</h3>
+                <div class="project-form">
+                    <div class="form-group">
+                        <label for="new_project_name">项目名称</label>
+                        <input type="text" id="new_project_name" placeholder="例如: ssh" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_type">类型 (type)</label>
+                        <select id="new_type" required>
+                            <option value="tcp">TCP</option>
+                            <option value="udp">UDP</option>
+                            <option value="http">HTTP</option>
+                            <option value="https">HTTPS</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_local_ip">本地IP (local_ip)</label>
+                        <input type="text" id="new_local_ip" value="127.0.0.1" required>
+                        <div class="error-message" id="new_local_ip_error"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_local_port">本地端口 (local_port)</label>
+                        <input type="number" id="new_local_port" min="1" max="65535" value="22" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_remote_port">远程端口 (remote_port)</label>
+                        <input type="number" id="new_remote_port" min="10000" max="65535" value="10000" required>
+                    </div>
+                </div>
+                <div class="controls" style="margin-top: 15px;">
+                    <button id="confirmAddBtn" class="save">确认添加</button>
+                    <button id="cancelAddBtn">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const saveBtn = document.getElementById('saveBtn');
+            const reloadBtn = document.getElementById('reloadBtn');
+            const addProjectBtn = document.getElementById('addProjectBtn');
+            const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+            const confirmAddBtn = document.getElementById('confirmAddBtn');
+            const cancelAddBtn = document.getElementById('cancelAddBtn');
+            const status = document.getElementById('status');
+            const addProjectForm = document.getElementById('addProjectForm');
+            const projectsContainer = document.getElementById('projectsContainer');
+            
+            let configData = {};
+            let projects = [];
+            
+            // 初始化加载配置
+            loadConfig();
+            
+            // 保存配置
+            saveBtn.addEventListener('click', saveConfig);
+            
+            // 重新加载配置
+            reloadBtn.addEventListener('click', loadConfig);
+            
+            // 显示新增项目表单
+            addProjectBtn.addEventListener('click', function() {
+                addProjectForm.style.display = 'block';
+                // 自动设置远程端口为当前最大端口+1
+                const maxPort = projects.reduce((max, project) => 
+                    Math.max(max, project.remote_port || 10000), 10000);
+                document.getElementById('new_remote_port').value = maxPort + 1;
+            });
+            
+            // 确认添加项目
+            confirmAddBtn.addEventListener('click', addProject);
+            
+            // 取消添加项目
+            cancelAddBtn.addEventListener('click', function() {
+                addProjectForm.style.display = 'none';
+                clearAddForm();
+            });
+            
+            // 批量删除项目
+            batchDeleteBtn.addEventListener('click', batchDeleteProjects);
+            
+            // IP地址验证函数
+            function validateIP(ip) {
+                const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+                if (!ipRegex.test(ip)) return false;
+                
+                const parts = ip.split('.');
+                return parts.every(part => {
+                    const num = parseInt(part, 10);
+                    return num >= 0 && num <= 255 && part === num.toString();
+                });
+            }
+            
+            // 加载配置
+            function loadConfig() {
+                fetch('/api/read_toml?file_path=frpc.toml')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            showStatus(data.error, 'error');
+                            // 初始化空配置
+                            configData = { common: {} };
+                            projects = [];
+                            renderConfig();
+                        } else {
+                            configData = data.content;
+                            extractProjects();
+                            renderConfig();
+                            showStatus('配置加载成功', 'success');
+                        }
+                    })
+                    .catch(error => {
+                        showStatus('加载配置时出错: ' + error, 'error');
+                        configData = { common: {} };
+                        projects = [];
+                        renderConfig();
+                    });
+            }
+            
+            // 从配置数据中提取项目
+            function extractProjects() {
+                projects = [];
+                for (const [key, value] of Object.entries(configData)) {
+                    if (key !== 'common' && typeof value === 'object') {
+                        projects.push({
+                            name: key,
+                            type: value.type || '',
+                            local_ip: value.local_ip || '',
+                            local_port: value.local_port || '',
+                            remote_port: value.remote_port || ''
+                        });
+                    }
+                }
+            }
+            
+            // 渲染配置到界面
+            function renderConfig() {
+                // 渲染全局设置
+                if (configData.common) {
+                    document.getElementById('server_addr').value = configData.common.server_addr || '';
+                    document.getElementById('server_port').value = configData.common.server_port || 7000;
+                    document.getElementById('token').value = configData.common.token || '';
+                }
+                
+                // 渲染项目
+                renderProjects();
+            }
+            
+            // 渲染项目列表
+            function renderProjects() {
+                projectsContainer.innerHTML = '';
+                
+                projects.forEach((project, index) => {
+                    const projectCard = document.createElement('div');
+                    projectCard.className = 'project-card';
+                    projectCard.innerHTML = `
+                        <div class="project-header">
+                            <div class="project-title">${project.name}</div>
+                            <div class="project-controls">
+                                <input type="checkbox" class="project-checkbox" data-index="${index}">
+                                <button class="danger" onclick="deleteProject(${index})">删除</button>
+                            </div>
+                        </div>
+                        <div class="project-form">
+                            <div class="form-group">
+                                <label>类型 (type)</label>
+                                <select onchange="updateProject(${index}, 'type', this.value)">
+                                    <option value="tcp" ${project.type === 'tcp' ? 'selected' : ''}>TCP</option>
+                                    <option value="udp" ${project.type === 'udp' ? 'selected' : ''}>UDP</option>
+                                    <option value="http" ${project.type === 'http' ? 'selected' : ''}>HTTP</option>
+                                    <option value="https" ${project.type === 'https' ? 'selected' : ''}>HTTPS</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>本地IP (local_ip)</label>
+                                <input type="text" value="${project.local_ip}" 
+                                       onchange="validateAndUpdateIP(${index}, this)" 
+                                       placeholder="127.0.0.1">
+                                <div class="error-message" id="ip_error_${index}"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>本地端口 (local_port)</label>
+                                <input type="number" value="${project.local_port}" min="1" max="65535"
+                                       onchange="updateProject(${index}, 'local_port', this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label>远程端口 (remote_port)</label>
+                                <input type="number" value="${project.remote_port}" min="10000" max="65535"
+                                       onchange="updateProject(${index}, 'remote_port', this.value)">
+                            </div>
+                        </div>
+                    `;
+                    projectsContainer.appendChild(projectCard);
+                });
+            }
+            
+            // 添加新项目
+            function addProject() {
+                const name = document.getElementById('new_project_name').value.trim();
+                const type = document.getElementById('new_type').value;
+                const local_ip = document.getElementById('new_local_ip').value;
+                const local_port = document.getElementById('new_local_port').value;
+                const remote_port = document.getElementById('new_remote_port').value;
+                
+                // 验证IP地址
+                if (!validateIP(local_ip)) {
+                    document.getElementById('new_local_ip_error').textContent = '请输入有效的IP地址';
+                    return;
+                }
+                
+                if (!name) {
+                    showStatus('请输入项目名称', 'error');
+                    return;
+                }
+                
+                // 检查项目名称是否已存在
+                if (projects.some(p => p.name === name)) {
+                    showStatus('项目名称已存在', 'error');
+                    return;
+                }
+                
+                projects.push({
+                    name,
+                    type,
+                    local_ip,
+                    local_port: parseInt(local_port),
+                    remote_port: parseInt(remote_port)
+                });
+                
+                addProjectForm.style.display = 'none';
+                clearAddForm();
+                renderProjects();
+                showStatus('项目添加成功', 'success');
+            }
+            
+            // 清空新增表单
+            function clearAddForm() {
+                document.getElementById('new_project_name').value = '';
+                document.getElementById('new_local_ip').value = '127.0.0.1';
+                document.getElementById('new_local_port').value = '22';
+                document.getElementById('new_local_ip_error').textContent = '';
+            }
+            
+            // 更新项目信息
+            window.updateProject = function(index, field, value) {
+                if (projects[index]) {
+                    projects[index][field] = field === 'local_port' || field === 'remote_port' 
+                        ? parseInt(value) || 0 : value;
+                    // 实时保存
+                    saveConfig();
+                }
+            };
+            
+            // 验证并更新IP地址
+            window.validateAndUpdateIP = function(index, input) {
+                const ip = input.value.trim();
+                const errorElement = document.getElementById(`ip_error_${index}`);
+                
+                if (validateIP(ip)) {
+                    input.classList.remove('error');
+                    errorElement.textContent = '';
+                    projects[index].local_ip = ip;
+                    saveConfig();
+                } else {
+                    input.classList.add('error');
+                    errorElement.textContent = '请输入有效的IP地址';
+                }
+            };
+            
+            // 删除单个项目
+            window.deleteProject = function(index) {
+                if (confirm('确定要删除这个项目吗？')) {
+                    // 从项目中删除
+                    const deletedProject = projects.splice(index, 1)[0];
+                    
+                    // 从配置数据中删除对应的项目
+                    if (configData[deletedProject.name]) {
+                        delete configData[deletedProject.name];
+                    }
+                    
+                    renderProjects();
+                    saveConfig();
+                    showStatus('项目已删除', 'success');
+                }
+            };
+            
+            // 批量删除项目
+            function batchDeleteProjects() {
+                const checkboxes = document.querySelectorAll('.project-checkbox:checked');
+                if (checkboxes.length === 0) {
+                    showStatus('请选择要删除的项目', 'error');
+                    return;
+                }
+                
+                if (confirm(`确定要删除选中的 ${checkboxes.length} 个项目吗？`)) {
+                    const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index)).sort((a, b) => b - a);
+                    
+                    // 从项目和配置数据中删除选中的项目
+                    indices.forEach(index => {
+                        const deletedProject = projects[index];
+                        if (deletedProject && configData[deletedProject.name]) {
+                            delete configData[deletedProject.name];
+                        }
+                        projects.splice(index, 1);
+                    });
+                    
+                    renderProjects();
+                    saveConfig();
+                    showStatus(`已删除 ${indices.length} 个项目`, 'success');
+                }
+            }
+            
+            // 保存配置
+            function saveConfig() {
+                // 更新全局配置
+                configData.common = {
+                    server_addr: document.getElementById('server_addr').value,
+                    server_port: parseInt(document.getElementById('server_port').value) || 7000,
+                    token: document.getElementById('token').value
+                };
+                
+                // 验证服务器IP
+                if (!validateIP(configData.common.server_addr)) {
+                    showStatus('服务器IP地址格式错误', 'error');
+                    return;
+                }
+                
+                // 更新项目配置
+                projects.forEach(project => {
+                    configData[project.name] = {
+                        type: project.type,
+                        local_ip: project.local_ip,
+                        local_port: project.local_port,
+                        remote_port: project.remote_port
+                    };
+                });
+                
+                // 发送到后端保存
+                fetch('/api/write_toml', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: configData,
+                        file_path: 'frpc.toml'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showStatus('保存失败: ' + data.error, 'error');
+                    } else {
+                        showStatus('配置保存成功', 'success');
+                    }
+                })
+                .catch(error => {
+                    showStatus('保存时出错: ' + error, 'error');
+                });
+            }
+            
+            // 显示状态消息
+            function showStatus(message, type) {
+                status.textContent = message;
+                status.className = 'status ' + type;
+                
+                setTimeout(() => {
+                    status.className = 'status';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
